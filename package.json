@@ -13,6 +13,7 @@
     "@avejidah/get-parameter-names": "0.3.2",
     "bluebird": "3.4.6",
     "di": "0.0.1",
+    "log4js": "1.0.1",
     "wire": "0.10.11"
   }
 }

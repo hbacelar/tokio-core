@@ -6,12 +6,15 @@ const annotate = require('@avejidah/get-parameter-names');
 const Injector = require('di').Injector;
 const Module = require('di').Module;
 const Program = require('./program');
+const log4js = require('log4js');
 
-function Container(nodeModule) {
+function Container(nodeModule, config = {}) {
     this.program = new Program(nodeModule);
     this.pluginConfig = {};
     this.context = null;
     this.injector = null;
+    log4js.configure(config.log);
+    this.rootLogger = log4js.getLogger();
 }
 
 Container.prototype.addPlugin = function(name, impl) {
@@ -67,8 +70,8 @@ Container.prototype.destroy = function destroy() {
     return this.context.destroy();
 }
 
-Container.prototype.log = function () {
-    console.log.apply(console, arguments);
+Container.prototype.logger = function () {
+    return this.rootLogger;
 };
 
 Container.prototype.execute = function execute(args) {
@@ -80,6 +83,8 @@ Container.prototype.execute = function execute(args) {
          * This module contains data that *pertains* only to this execution,
          * hence, it is not shared with other executions.
          */
+        modules.value('$log', log4js.getLogger('request'));
+        
         for(let arg in args) {
             modules.value(arg, args[arg]);
         }
