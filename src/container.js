@@ -32,19 +32,20 @@ Container.prototype.init = function (timeout) {
             this.context = context;
         })
         .then(() => {
-            const modules = [];
-            let module = new Module();
+            let modules = new Module();
 
             for (let pName in this.pluginConfig) {
                 if (this.context[pName] instanceof Function) {
-                    module.factory(pName, this.context[pName]);
+                    // Decorate plugin execution Function
+                    this.context[pName].$inject = annotate(this.context[pName]);
+                    // Add plugin to DI container
+                    modules.factory(pName, this.context[pName]);
                 } else {
-                    module.value(pName, this.context[pName]);
+                    modules.value(pName, this.context[pName]);
                 }
             };
-            modules.push(module);
 
-            this.injector = new Injector(modules);
+            this.injector = new Injector([modules]);
 
             // Decorate all Functions subject to Dependency Injection
             this.program.setup().$inject = annotate(this.program.setup());
@@ -72,7 +73,7 @@ Container.prototype.log = function () {
 
 Container.prototype.execute = function execute(args) {
     return Promise.try(() => {
-        const module = new Module();
+        const modules = new Module();
         
         /**
          * Create servicing module.
@@ -80,7 +81,7 @@ Container.prototype.execute = function execute(args) {
          * hence, it is not shared with other executions.
          */
         for(let arg in args) {
-            module.value(arg, args[arg]);
+            modules.value(arg, args[arg]);
         }
 
         // if $require then $do then $ensure then END
@@ -90,7 +91,7 @@ Container.prototype.execute = function execute(args) {
         
         const executionVenue = this.injector
             // inherit from boot injector
-            .createChild([module], Object.keys(this.pluginConfig));
+            .createChild([modules], Object.keys(this.pluginConfig));
 
         // inject dependencies and execute
         return Promise.try(() => {
@@ -102,12 +103,12 @@ Container.prototype.execute = function execute(args) {
             return executionVenue.invoke(this.program.main());
         })
         .then((outcome) => {
-            module.value('$outcome', outcome);
+            modules.value('$outcome', outcome);
 
             return Promise.try(() => {
                 if (this.program.hasPostconditions()) {
                     return this.injector
-                        .createChild([module], Object.keys(this.pluginConfig))
+                        .createChild([modules], Object.keys(this.pluginConfig))
                         .invoke(this.program.postconditions());
                 }
             })
