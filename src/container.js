@@ -2,7 +2,7 @@
 
 const wire = require('wire');
 const Promise = require('bluebird');
-const annotation = require('di/lib/annotation');
+const annotate = require('@avejidah/get-parameter-names');
 const Injector = require('di').Injector;
 const Module = require('di').Module;
 const Program = require('./program');
@@ -47,11 +47,11 @@ Container.prototype.init = function (timeout) {
             this.injector = new Injector(modules);
 
             // Decorate all Functions subject to Dependency Injection
-            this.program.setup().$inject = annotation.parse(this.program.setup());
-            this.program.teardown().$inject = annotation.parse(this.program.teardown());
-            this.program.preconditions().$inject = annotation.parse(this.program.preconditions());
-            this.program.main().$inject = annotation.parse(this.program.main());
-            this.program.postconditions().$inject = annotation.parse(this.program.postconditions());
+            this.program.setup().$inject = annotate(this.program.setup());
+            this.program.teardown().$inject = annotate(this.program.teardown());
+            this.program.preconditions().$inject = annotate(this.program.preconditions());
+            this.program.main().$inject = annotate(this.program.main());
+            this.program.postconditions().$inject = annotate(this.program.postconditions());
 
             // Execute the setup hook
             return this.injector.invoke(this.program.setup(), this.program);
