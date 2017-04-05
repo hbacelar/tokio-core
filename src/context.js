@@ -79,10 +79,10 @@ Context.prototype.execute = function execute(args) {
                 return executionVenue.invoke(operation.main(), null);
             })
             .then((outcome) => {
-                modules.value('$outcome', outcome);
-
                 return Promise.try(() => {
                     if (operation.hasPostconditions()) {
+                        modules.value('$outcome', outcome);
+                        
                         return this._injector
                             .createChild([modules], Object.keys(this._modules))
                             .invoke(operation.postconditions(), null);
