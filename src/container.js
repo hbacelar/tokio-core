@@ -10,7 +10,6 @@ const assert = require('assert');
 const Context = require('./context');
 const utils = require('./utils');
 const log4js = require('log4js');
-log4js.getLogger();
 
 function Container(moduleImpl, config = {}) {
     this.program = new Program(moduleImpl);
