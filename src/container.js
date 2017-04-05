@@ -6,120 +6,101 @@ const annotate = require('@avejidah/get-parameter-names');
 const Injector = require('di').Injector;
 const Module = require('di').Module;
 const Program = require('./program');
+const assert = require('assert');
+const Context = require('./context');
+const utils = require('./utils');
 const log4js = require('log4js');
+log4js.getLogger();
 
-function Container(nodeModule, config = {}) {
-    this.program = new Program(nodeModule);
-    this.pluginConfig = {};
-    this.context = null;
-    this.injector = null;
-    log4js.configure(config.log);
-    this.rootLogger = log4js.getLogger();
+function Container(moduleImpl, config = {}) {
+    this.program = new Program(moduleImpl);
+    this._modules = null;
+    this._injector = null;
+    this._wireSpec = {
+        '$$version': require('../package.json').version,
+        '$$start': Date.now(),
+        '$config': require('./plugins/config')
+    };
 }
 
-Container.prototype.addPlugin = function(name, impl) {
-    this.pluginConfig[name] = impl;
+Container.prototype.addFactory = function(name, impl) {
+    assert(typeof name === 'string', 'Invalid plugin name');
+    assert(impl instanceof Function, 'Invalid plugin implementation');
+
+    this._wireSpec[name] = {
+        create: {
+            module: impl
+        }
+    };
+    this._wireSpec[name].create.args = annotate(impl).map((arg) => {
+        return { $ref: arg };
+    });
+
+    return this;
 };
 
-Container.prototype.init = function (timeout) {
+Container.prototype.addValue = function(name, impl) {
+    assert(typeof name === 'string', 'Invalid plugin name');
+    assert(impl, 'Invalid plugin implementation'); // Should be a truthy value
 
-    // Execute the configuration hook
-    this.program.configure()(this);
+    this._wireSpec[name] = impl;
 
-    return wire(this.pluginConfig)
-        .timeout(
-            Number(timeout),
-            new Error('The context failed to boot in a timely fashion. Check your plugins and box connectivity')
-        )
-        .then((context) => {
-            this.context = context;
+    return this;
+};
+
+Container.prototype.init = function init(timeout = 1000) {
+
+    return Promise.try(() => {
+            // Execute the configuration hook
+            this.program.configure()(this.addFactory.bind(this), this.addValue.bind(this));
         })
-        .then(() => {
-            let modules = new Module();
+        .then(wire.bind(null, this._wireSpec))
+        .then((resolvedWireContext) => {
+            this._modules = new Module();
 
-            for (let pName in this.pluginConfig) {
-                if (this.context[pName] instanceof Function) {
+            //console.dir(resolvedWireContext, {depth:null});
+
+            for (let [name, impl] of utils.entries(resolvedWireContext)) {
+                if (impl instanceof Function) {
                     // Decorate plugin execution Function
-                    this.context[pName].$inject = annotate(this.context[pName]);
+                    impl.$inject = annotate(impl);
                     // Add plugin to DI container
-                    modules.factory(pName, this.context[pName]);
+                    this._modules.factory(name, impl);
                 } else {
-                    modules.value(pName, this.context[pName]);
+                    this._modules.value(name, impl);
                 }
-            };
+            }
+            this._modules.value('$log', log4js.getLogger());
 
-            this.injector = new Injector([modules]);
+            return this._modules;
+        })
+        .then((modules) => {
+            this._injector = new Injector([modules]);
 
             // Decorate all Functions subject to Dependency Injection
             this.program.setup().$inject = annotate(this.program.setup());
             this.program.teardown().$inject = annotate(this.program.teardown());
-            this.program.preconditions().$inject = annotate(this.program.preconditions());
-            this.program.main().$inject = annotate(this.program.main());
-            this.program.postconditions().$inject = annotate(this.program.postconditions());
+
+            //modules.forEach((module) => {
+            //    console.dir(module, {depth:null});
+            //});
 
             // Execute the setup hook
-            return this.injector.invoke(this.program.setup(), this.program);
-        });
-};
-
-Container.prototype.destroy = function destroy() {
-    if (!this.context) {
-        return;
-    }
-    // TODO: onDestroy hook
-    return this.context.destroy();
-}
-
-Container.prototype.logger = function () {
-    return this.rootLogger;
-};
-
-Container.prototype.execute = function execute(args) {
-    return Promise.try(() => {
-        const modules = new Module();
-        
-        /**
-         * Create servicing module.
-         * This module contains data that *pertains* only to this execution,
-         * hence, it is not shared with other executions.
-         */
-        modules.value('$log', log4js.getLogger('request'));
-        
-        for(let arg in args) {
-            modules.value(arg, args[arg]);
-        }
-
-        // if $require then $do then $ensure then END
-        // if not $require then END
-        // if $require then if not $do then END
-        // if $require then $do then if not $ensure then END
-        
-        const executionVenue = this.injector
-            // inherit from boot injector
-            .createChild([modules], Object.keys(this.pluginConfig));
-
-        // inject dependencies and execute
-        return Promise.try(() => {
-            if (this.program.hasPreconditions()) {
-                return executionVenue.invoke(this.program.preconditions());
-            }
+            return this._injector.invoke(this.program.setup(), null);
         })
-        .then(() => {
-            return executionVenue.invoke(this.program.main());
-        })
-        .then((outcome) => {
-            modules.value('$outcome', outcome);
+        .then(() => { // TODO: improve
+            const modules = {};
 
-            return Promise.try(() => {
-                if (this.program.hasPostconditions()) {
-                    return this.injector
-                        .createChild([modules], Object.keys(this.pluginConfig))
-                        .invoke(this.program.postconditions());
-                }
-            })
-            .then(() => outcome);
-        });
-    });
-}
+            this._modules.forEach((mod) => {
+               modules[mod[0]] = mod[2];
+            });
+
+            return new Context(this._injector, modules, this.program);
+        })
+        .timeout(
+            Number(timeout),
+            new Error('The context failed to boot in a timely fashion. Check your plugins and box connectivity')
+        );
+};
 
 module.exports = Container;

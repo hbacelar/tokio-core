@@ -1,3 +1,3 @@
 'use strict';
 
-module.exports.Container = require('./src/container');
+module.exports = require('./src/container');

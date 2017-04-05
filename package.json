@@ -4,7 +4,9 @@
   "description": "Tokio toolkit core constructs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:functional && npm run test:unit",
+    "test:functional": "./node_modules/.bin/tape ./tests/functional/**/*.js | tap-spec",
+    "test:unit": "echo 'Not implemented' && exit 1;"
   },
   "repository": "jorgemsrs/tokio-core",
   "author": "Jorge Silva <jorgemsrs@gmail.com>",
@@ -13,7 +15,15 @@
     "@avejidah/get-parameter-names": "0.3.2",
     "bluebird": "3.4.6",
     "di": "0.0.1",
+    "jsonic": "0.2.2",
     "log4js": "1.0.1",
+    "object-path": "0.11.4",
+    "patrun": "0.5.1",
+    "uuid": "3.0.1",
     "wire": "0.10.11"
+  },
+  "devDependencies": {
+    "tap-spec": "4.1.1",
+    "tape": "4.6.3"
   }
 }

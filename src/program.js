@@ -2,83 +2,50 @@
 
 const METHOD_CONFIGURE = '$configure';
 const METHOD_SETUP = '$setup';
-const METHOD_PRECONDITION = '$require';
-const METHOD_MAIN = '$do';
-const METHOD_POSTCONDITION = '$ensure';
 const METHOD_TEARDOWN = '$teardown';
+const METHOD_OPERATIONS = '$operations';
 
-function _noop() {};
+const patrun = require('patrun');
+const jsonic = require('jsonic');
+const entries = require('./utils').entries;
+const Operation = require('./operation');
 
-function Program(factory) {
-    // TODO: validate optional methods (they need to be Function)
-    // 1. needs to be a function
-    // 2. the function must return an Object
-    // 3. the Object must have a $do method
-    // 4. Optional methods: $onInit, $onDestroy, $require (preconditions), $ensure (postconditions)
+function _noop() {}
 
-    if (!factory instanceof Function) {
-        throw new Error('Invalid Program: it needs to be a factory Function');
+function Module(impl) {
+    this._patrun = patrun();
+    // TODO validate operations
+    this._module = impl;
+
+    for (let [key, handler] of entries(this.getOperations())) {
+        let pattern = jsonic(key);
+        console.log('Registering [ pattern=', pattern, ']');
+        this._patrun.add(pattern, new Operation(handler));
     }
-
-    const impl = factory();
-
-    if (!impl) {
-        throw new Error('Invalid Program: it is incorrectly implemented');
-    }
-
-    if (!impl[METHOD_MAIN] && !$impl[METHOD_MAIN] instanceof Function) {
-        throw new Error(`Invalid Program: it needs to implement the ${METHOD_MAIN} Function`);
-    }
-
-    this.impl = impl;
 }
 
-Program.prototype.hasConfigure = function hasConfigure() {
-    return this.impl[METHOD_CONFIGURE] instanceof Function;
-}
+Module.prototype.getOperations = function getOperations() {
+    return this._module[METHOD_OPERATIONS];
+};
 
-Program.prototype.configure = function configure() {
-    return this.impl[METHOD_CONFIGURE] || _noop;
-}
+Module.prototype.match = function match(pattern) {
+    return this._patrun.find(pattern);
+};
 
-Program.prototype.hasSetup = function hasSetup() {
-    return this.impl[METHOD_SETUP] instanceof Function;
-}
+Module.prototype.configure = function configure() {
+    return this._module[METHOD_CONFIGURE] || _noop();
+};
 
-Program.prototype.setup = function setup() {
-    return this.impl[METHOD_SETUP] || _noop;
-}
+Module.prototype.setup = function setup() {
+    return this._module[METHOD_SETUP] || _noop();
+};
 
-Program.prototype.hasTeardown = function hasTeardown() {
-    return this.impl[METHOD_TEARDOWN] instanceof Function;
-}
+Module.prototype.teardown = function teardown() {
+    return this._module[METHOD_TEARDOWN] || _noop();
+};
 
-Program.prototype.teardown = function teardown() {
-    return this.impl[METHOD_TEARDOWN] || _noop;
-}
+Module.prototype.toString = function toString() {
+    return `Module [#programs=${Object.keys(this.getOperations()).length}]`;
+};
 
-Program.prototype.hasPreconditions = function hasPreconditions() {
-    return this.impl[METHOD_PRECONDITION] instanceof Function;
-}
-
-Program.prototype.preconditions = function preconditions() {
-    return this.impl[METHOD_PRECONDITION] || _noop;
-}
-
-Program.prototype.hasPostconditions = function hasPostconditions() {
-    return this.impl[METHOD_POSTCONDITION] instanceof Function;
-}
-
-Program.prototype.postconditions = function postconditions() {
-    return this.impl[METHOD_POSTCONDITION] || _noop;
-}
-
-Program.prototype.main = function main() {
-    return this.impl[METHOD_MAIN];
-}
-
-Program.prototype.toString = function toString() {
-    return `Program [name=${this.impl.name}]`;
-}
-
-module.exports = Program;
+module.exports = Module;
