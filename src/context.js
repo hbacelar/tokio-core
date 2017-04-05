@@ -38,7 +38,7 @@ Context.prototype.execute = function execute(args) {
             const operation = this._program.match(args);
 
             if (operation === null) {
-                throw new Error('No operation matches the pattern', args);
+                throw new Error(`No operation matches the pattern '${JSON.stringify(args)}'`);
             }
 
             return operation;
