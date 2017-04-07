@@ -15,10 +15,12 @@ function Container(moduleImpl, config = {}) {
     this.program = new Program(moduleImpl);
     this._modules = null;
     this._injector = null;
+
+    log4js.configure(config.log);
+
     this._wireSpec = {
-        '$$version': require('../package.json').version,
-        '$$start': Date.now(),
-        '$config': require('./plugins/config')
+        '$config': require('./plugins/config'),
+        '$logFactory': log4js
     };
 }
 

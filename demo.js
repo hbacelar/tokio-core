@@ -1,23 +1,23 @@
 'use strict';
 
 const sum = {
-    $require($params, $log, $uuid) {
-        $log.trace('sum preconditions', $params, $uuid);
+    $require($params, $log) {
+        //$log.trace('sum preconditions', $params);
     },
 
     $do($params, $log) {
-        $log.trace('Executing sum');
+        //$log.trace('Executing sum');
         return Number($params.a) + Number($params.b);
     },
 
     $ensure($outcome, $log) {
-        $log.trace('sum postconditions', $outcome);
+        //$log.trace('sum postconditions', $outcome);
     }
 };
 
 const mult = {
-    $require($params, $log, $uuid) {
-        $log.trace('mult preconditions', $params, $uuid);
+    $require($params, $log) {
+        $log.trace('mult preconditions', $params);
     },
 
     $do($params, $log) {
@@ -59,17 +59,24 @@ const program = {
 const Fabric = require('./index.js');
 const fabric = new Fabric(program);
 
+function cenas(context) {
+    return context.execute({role: 'math', cmd: 'sum', a: 1, b: 2}).then(cenas.bind(null, context));
+}
+
 fabric
     .init()
     .then((context) => {
-        context.logger().info('Started!');
+        context.logger.info('Started!');
 
-        const ops = [
+        /*const ops = [
             context.execute({role: 'math', cmd: 'sum', a: 1, b: 2}),
             context.execute({role: 'math', cmd: 'mult', a: 3, b: 2})
-        ];
+        ];*/
 
-        return Promise.all(ops)
+        return context.execute({role: 'math', cmd: 'sum', a: 1, b: 2})
+            .then(cenas.bind(null, context));
+
+        /*return Promise.all(ops)
             .then(([sumResult, multResult]) => {
                 console.log(`Sum=${sumResult}, Mult=${multResult}`);
             })
@@ -77,9 +84,9 @@ fabric
                 return context.execute({a: 3, b: 2}); // no operation to run!!
             })
             .catch((err) => {
-                context.logger().error('Runtime error.', err.stack);
+                context.logger.error('Runtime error.', err.stack);
             })
-            .then(context.destroy.bind(context));
+            .then(context.destroy.bind(context));*/
     })
     .catch((err) => {
         console.error('Could not start.', err.stack);
