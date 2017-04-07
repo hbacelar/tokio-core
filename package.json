@@ -19,6 +19,7 @@
     "log4js": "1.0.1",
     "object-path": "0.11.4",
     "patrun": "0.5.1",
+    "type-is": "1.6.15",
     "wire": "0.10.11"
   },
   "devDependencies": {

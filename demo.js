@@ -5,9 +5,13 @@ const sum = {
         //$log.trace('sum preconditions', $params);
     },
 
-    $do($params, $log) {
+    $do($params, $log, $http) {
         //$log.trace('Executing sum');
-        return Number($params.a) + Number($params.b);
+        return $http.get("http://google.com/")
+            .then((response) => {
+            console.log(response);
+                return Number($params.a) + Number($params.b);
+            });
     },
 
     $ensure($outcome, $log) {
@@ -35,9 +39,9 @@ const program = {
         addValue('mysql', 'mysql-client');
         addValue('mysql2', 'mysql-client');
 
-        addFactory('factory1', function (mysql) {
+        addFactory('$http', function ($httpClientFactory) {
             return function factory1() { // called once per event, injectable
-                return 'factory-value :: ' + mysql;
+                return $httpClientFactory();
             }
         });
     },

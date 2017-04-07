@@ -20,6 +20,7 @@ function Container(moduleImpl, config = {}) {
 
     this._wireSpec = {
         '$config': require('./plugins/config'),
+        '$httpClientFactory': require('./plugins/http-client'),
         '$logFactory': log4js
     };
 }
