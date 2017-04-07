@@ -8,6 +8,7 @@ function Context(injector, modules, program) {
     this._injector = injector;
     this._program = program;
     this._modules = modules;
+    this._moduleNames = Object.keys(this._modules);
     this.logger = log4js.getLogger();
 
     this.start_time = Date.now();
@@ -21,7 +22,7 @@ Context.prototype.destroy = function destroy() {
         modules.value('$log', log4js.getLogger()); // TODO: decide which logging facility
 
         return this._injector
-            .createChild([modules], Object.keys(this._modules))
+            .createChild([modules], this._moduleNames)
             .invoke(this._program.teardown(), null);
     });
 };
@@ -51,9 +52,8 @@ Context.prototype.execute = function execute(args) {
 
             //console.dir(this._program, {depth:null});
 
-            const executionVenue = this._injector
-                // inherit from boot _injector
-                .createChild([modules], Object.keys(this._modules));
+            // inherit from boot _injector
+            const executionVenue = this._injector.createChild([modules], this._moduleNames);
 
             return Promise.try(function executeRequire() {
                 if (operation.hasPreconditions()) {
