@@ -59,8 +59,12 @@ const program = {
 const Fabric = require('./index.js');
 const fabric = new Fabric(program);
 
-function cenas(context) {
-    return context.execute({role: 'math', cmd: 'sum', a: 1, b: 2}).then(cenas.bind(null, context));
+function recursive(context, i) {
+    console.time(i);
+    return context.execute({role: 'math', cmd: 'sum', a: 1, b: 2}).then(() => {
+        console.timeEnd(i);
+        return recursive(context, i++);
+    });
 }
 
 fabric
@@ -73,8 +77,7 @@ fabric
             context.execute({role: 'math', cmd: 'mult', a: 3, b: 2})
         ];*/
 
-        return context.execute({role: 'math', cmd: 'sum', a: 1, b: 2})
-            .then(cenas.bind(null, context));
+        return recursive(context, 0);
 
         /*return Promise.all(ops)
             .then(([sumResult, multResult]) => {

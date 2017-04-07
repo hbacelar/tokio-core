@@ -47,6 +47,8 @@ Context.prototype.execute = function execute(args) {
              */
             modules.value('$log', log4js.getLogger('request'));
             modules.value('$params', args);
+            modules.value('$outcome', undefined);
+
 
             //console.dir(this._program, {depth:null});
 
@@ -62,17 +64,14 @@ Context.prototype.execute = function execute(args) {
             .then(() => {
                 return executionVenue.invoke(operation.main(), null);
             })
-            .then((outcome) => {
+            .then((result) => {
+                executionVenue._providers['$outcome'][1] = result;
+
                 return Promise.try(() => {
                     if (operation.hasPostconditions()) {
-                        modules.value('$outcome', outcome);
-
-                        return this._injector
-                            .createChild([modules], Object.keys(this._modules))
-                            .invoke(operation.postconditions(), null);
+                        return executionVenue.invoke(operation.postconditions(), null);
                     }
                 })
-                .then(() => outcome);
             });
         });
 };
