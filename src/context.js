@@ -49,29 +49,30 @@ Context.prototype.execute = function execute(args) {
             modules.value('$params', args);
             modules.value('$outcome', undefined);
 
-
             //console.dir(this._program, {depth:null});
 
             const executionVenue = this._injector
                 // inherit from boot _injector
                 .createChild([modules], Object.keys(this._modules));
 
-            return Promise.try(() => {
+            return Promise.try(function executeRequire() {
                 if (operation.hasPreconditions()) {
-                    return executionVenue.invoke(operation.preconditions(), null);
+                    return Promise.try(executionVenue.invoke.bind(executionVenue, operation.preconditions(), null));
                 }
             })
-            .then(() => {
-                return executionVenue.invoke(operation.main(), null);
+            .then(function executeDo() {
+                return Promise.try(executionVenue.invoke.bind(executionVenue, operation.main(), null));
             })
-            .then((result) => {
+            .then(function executeEnsure(result) {
+                // Change outcome reference
                 executionVenue._providers['$outcome'][1] = result;
 
-                return Promise.try(() => {
-                    if (operation.hasPostconditions()) {
-                        return executionVenue.invoke(operation.postconditions(), null);
-                    }
-                })
+                if (operation.hasPostconditions()) {
+                    return Promise.try(executionVenue.invoke.bind(executionVenue, operation.postconditions(), null))
+                        .then(() => result);
+                }
+
+                return result;
             });
         });
 };
